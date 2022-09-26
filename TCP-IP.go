@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"hash/fnv"
 	"os"
@@ -21,7 +22,7 @@ type client struct {
 type packet struct {
 	to           string
 	from         client
-	message      string
+	message      []byte
 	sync         int
 	originalSync int
 	ack          int
@@ -57,7 +58,9 @@ func startServer(s server) {
 		select {
 		case p := <-s.receive:
 			{
-				if p.message == "" {
+				var s string
+				json.Unmarshal(p.message, &s)
+				if s == "" {
 					//Packet is handshake
 					fmt.Println("server received sync", p.sync)
 					time.Sleep(1 * time.Second)
@@ -67,7 +70,9 @@ func startServer(s server) {
 					p.from.receive <- p
 				} else {
 					//Packet has message after handshake
-					localHash := hash(p.message)
+					var s string
+					json.Unmarshal(p.message, &s)
+					localHash := hash(s)
 
 					fmt.Println("server received sync", p.sync, "and acknowlegdement", p.ack)
 
@@ -77,7 +82,8 @@ func startServer(s server) {
 
 						fmt.Println("## Hash is correct ##")
 						fmt.Println("Message received: ", p.message)
-						p.message = "Confirm"
+						p.message, _ = json.Marshal("Confirm")
+
 						p.from.receive <- p
 					}
 
@@ -107,6 +113,7 @@ func birthClient(c client, s server) {
 					sc.Scan()
 					p.message = sc.Text()
 					p.hash = hash(p.message)
+					a, _ := json.Marshal(p.message)
 
 					fmt.Println("client is sending sync", p.sync, "and acknowlegdement", p.ack, "and message \"", p.message, "\"")
 					s.receive <- p
