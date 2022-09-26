@@ -30,21 +30,22 @@ func main() {
 
 	go startServer(server)
 	go birthClient(client, server)
-	var packet = packet{from: client, sync: 1, ack: 0}
+	
+	for {
+		fmt.Println("pls input command")
+
+		var command, err = fmt.Scanln()
+		_ = err
+
+		switch command {
+		case "send besked":
+			fmt.Println("hvad er din besked")
+			var besked, err = fmt.Scanln()
+			var packet = packet{from: client, sync: 1, ack: 0}
 	server.receive <- packet
-	/* for {
-			fmt.Println("pls input command")
+		}
 
-			var command,err = fmt.Scanln()
-			_ = err
-
-			switch command {
-	        case "":
-	            fmt.Println("1")
-			}
-
-
-		} */
+	}
 	time.Sleep(20 * time.Second)
 }
 
