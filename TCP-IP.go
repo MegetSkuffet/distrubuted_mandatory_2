@@ -74,14 +74,20 @@ func startServer(s server) {
 					json.Unmarshal(p.message, &s)
 					localHash := hash(s)
 
+					time.Sleep(1 * time.Second)
+
 					fmt.Println("server received sync", p.sync, "and acknowlegdement", p.ack)
+
+					time.Sleep(1 * time.Second)
 
 					if p.hash != localHash {
 						fmt.Println("Shits fucked")
 					} else {
 
 						fmt.Println("## Hash is correct ##")
-						fmt.Println("Message received: ", p.message)
+						var msg string
+						json.Unmarshal(p.message, &msg)
+						fmt.Println("Message received: ", msg)
 						p.message, _ = json.Marshal("Confirm")
 
 						p.from.receive <- p
@@ -101,9 +107,14 @@ func birthClient(c client, s server) {
 	for {
 		select {
 		case p := <-c.receive:
+			var msg string
+			json.Unmarshal(p.message, msg)
 			{
-				if p.ack == p.originalSync+1 && p.message != "Confirm" {
+				if p.ack == p.originalSync+1 && msg != "Confirm" {
+					time.Sleep(1 * time.Second)
+
 					fmt.Println("client received ackknowlegdement", p.ack, "and sync", p.sync)
+					time.Sleep(1 * time.Second)
 
 					p.ack = p.sync
 
@@ -111,10 +122,10 @@ func birthClient(c client, s server) {
 					fmt.Println("What message do you wish to send?")
 					sc := bufio.NewScanner(os.Stdin)
 					sc.Scan()
-					p.message = sc.Text()
-					p.hash = hash(p.message)
-					a, _ := json.Marshal(p.message)
+					p.message, _ = json.Marshal(sc.Text())
+					p.hash = hash(sc.Text())
 
+					time.Sleep(1 * time.Second)
 					fmt.Println("client is sending sync", p.sync, "and acknowlegdement", p.ack, "and message \"", p.message, "\"")
 					s.receive <- p
 
