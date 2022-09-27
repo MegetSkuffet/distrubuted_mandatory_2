@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"os"
+	"sort"
 	"time"
 )
 
@@ -27,6 +28,7 @@ type packet struct {
 	originalSync int
 	ack          int
 	hash         uint32
+	testSlice    []int
 }
 
 func main() {
@@ -37,17 +39,19 @@ func main() {
 
 	go startServer(server)
 	go birthClient(client, server)
-	fmt.Println("## pls input command ##")
+	fmt.Println("### Please input command:")
+	fmt.Println("### Enter 1 to simulate sending a single message to the server")
+	fmt.Println("### Enter 2 to simulate sending several packets to the server and handling message reordering")
 
 	var commandAsString string
 	sc.Scan()
 	commandAsString = sc.Text()
 
 	switch commandAsString {
-	case "send message":
-		var packet = packet{from: client, sync: 1, ack: 0}
-		packet.originalSync = packet.sync
-		server.receive <- packet
+	case "1":
+		sendSingleMessage(client, server)
+	case "2":
+		sendTestSlice(client, server)
 	}
 
 	time.Sleep(20 * time.Second)
@@ -68,6 +72,15 @@ func startServer(s server) {
 					p.ack = p.sync
 					fmt.Println("server is sending sync", p.sync, "and acknowlegdement", p.ack)
 					p.from.receive <- p
+				} else if p.testSlice != nil {
+					fmt.Println("Server recieved simulated unsorted array and is sorting it: ")
+					sort.Ints(p.testSlice)
+					for _, v := range p.testSlice {
+						fmt.Println(v)
+					}
+					p.message, _ = json.Marshal("Confirm")
+					p.from.receive <- p
+
 				} else {
 					//Packet has message after handshake
 					var s string
@@ -110,7 +123,7 @@ func birthClient(c client, s server) {
 			var msg string
 			json.Unmarshal(p.message, msg)
 			{
-				if p.ack == p.originalSync+1 && msg != "Confirm" {
+				if p.ack == p.originalSync+1 && msg != "Confirm" && p.testSlice == nil {
 					time.Sleep(1 * time.Second)
 
 					fmt.Println("client received ackknowlegdement", p.ack, "and sync", p.sync)
@@ -129,6 +142,22 @@ func birthClient(c client, s server) {
 					fmt.Println("client is sending sync", p.sync, "and acknowlegdement", p.ack, "and message \"", p.message, "\"")
 					s.receive <- p
 
+				} else if p.testSlice != nil {
+					time.Sleep(1 * time.Second)
+
+					fmt.Println("client received ackknowlegdement", p.ack, "and sync", p.sync)
+					time.Sleep(1 * time.Second)
+
+					p.ack = p.sync
+
+					p.sync++
+					noMsg := "noMsg"
+					p.message, _ = json.Marshal(noMsg)
+					p.hash = hash(noMsg)
+
+					time.Sleep(1 * time.Second)
+					fmt.Println("client is sending sync", p.sync, ", acknowlegdement", p.ack, " and sending simulated unsorted array")
+					s.receive <- p
 				}
 				for i := 0; i < 6; i++ {
 
@@ -168,4 +197,20 @@ func hash(s string) uint32 {
 	h := fnv.New32a()
 	h.Write([]byte(s))
 	return h.Sum32()
+}
+
+func sendSingleMessage(c client, s server) {
+	var packet = packet{from: c, sync: 1, ack: 0}
+	packet.originalSync = packet.sync
+	s.receive <- packet
+}
+
+func sendTestSlice(c client, s server) {
+	slice := []int{1, 2, 3, 4, 5}
+	for i, j := 0, len(slice)-1; i < j; i, j = i+1, j-1 {
+		slice[i], slice[j] = slice[j], slice[i]
+	}
+	var packet = packet{from: c, sync: 1, ack: 0, testSlice: slice}
+	packet.originalSync = packet.sync
+	s.receive <- packet
 }
