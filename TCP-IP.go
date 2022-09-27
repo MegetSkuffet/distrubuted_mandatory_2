@@ -73,8 +73,10 @@ func startServer(s server) {
 					fmt.Println("server is sending sync", p.sync, "and acknowlegdement", p.ack)
 					p.from.receive <- p
 				} else if p.testSlice != nil {
-					fmt.Println("Server recieved simulated unsorted array and is sorting it: ")
+					//Server recieved test slice and is making sure it is sorted
+					fmt.Println("Server recieved simulated unsorted slice and is sorting it: ")
 					sort.Ints(p.testSlice)
+					time.Sleep(1 * time.Second)
 					for _, v := range p.testSlice {
 						fmt.Println(v)
 					}
@@ -97,7 +99,7 @@ func startServer(s server) {
 						fmt.Println("Shits fucked")
 					} else {
 
-						fmt.Println("## Hash is correct ##")
+						fmt.Println("##Server checked received hash against local hash and confirmed correct string received ##")
 						var msg string
 						json.Unmarshal(p.message, &msg)
 						fmt.Println("Message received: ", msg)
@@ -124,6 +126,7 @@ func birthClient(c client, s server) {
 			json.Unmarshal(p.message, msg)
 			{
 				if p.ack == p.originalSync+1 && msg != "Confirm" && p.testSlice == nil {
+					//Simulate normal message sent to server
 					time.Sleep(1 * time.Second)
 
 					fmt.Println("client received ackknowlegdement", p.ack, "and sync", p.sync)
@@ -139,7 +142,7 @@ func birthClient(c client, s server) {
 					p.hash = hash(sc.Text())
 
 					time.Sleep(1 * time.Second)
-					fmt.Println("client is sending sync", p.sync, "and acknowlegdement", p.ack, "and message \"", p.message, "\"")
+					fmt.Println("client is sending sync", p.sync, "and acknowlegdement", p.ack, "and encoded message \"", p.message, "\"")
 					s.receive <- p
 
 				} else if p.testSlice != nil {
