@@ -54,7 +54,8 @@ func main() {
 		sendTestSlice(client, server)
 	}
 
-	time.Sleep(20 * time.Second)
+	time.Sleep(35 * time.Second)
+	fmt.Println("Timed out after waiting too long.")
 }
 
 func startServer(s server) {
